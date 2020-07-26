@@ -1,0 +1,3 @@
+[submodule "deps/mythos-rs"]
+	path = deps/mythos-rs
+	url = https://github.com/AKST/mythos-rs.git
