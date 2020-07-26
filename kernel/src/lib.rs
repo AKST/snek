@@ -1,3 +1,4 @@
+mod game;
 mod game_loop;
 
 use mythos_web::game_loop::start_game_loop;
