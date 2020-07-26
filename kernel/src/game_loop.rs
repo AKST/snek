@@ -7,13 +7,20 @@ use mythos_web::game_loop::*;
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlPreElement, Text};
 
-use crate::game::Game;
+use crate::game::{Game, GameEff};
+
+#[derive(PartialEq)]
+pub enum State {
+  Running,
+  Ended(f64, bool),
+}
 
 pub struct DemoGameLoop {
   game: Game,
   input_service: Box<dyn InputService>,
   logger: Box<dyn Logger>,
   text_node: Text,
+  state: State,
 }
 
 #[wasm_bindgen]
@@ -42,8 +49,24 @@ impl GameLoop for DemoGameLoop {
       }
     }
 
-    self.text_node.set_data(&self.game.render(t));
-    Ok(())
+    if let State::Ended(et, state) = self.state {
+      if t - et > 50.0 {
+        self.state = util::game_over_styles(t, state)?;
+      }
+      return Ok(())
+    }
+
+    match self.game.update(t) {
+      GameEff::Cont => {
+        let render = self.game.render(t);
+        self.text_node.set_data(&render);
+        Ok(())
+      }
+      GameEff::End => {
+        self.state = util::game_over_styles(t, true)?;
+        Ok(())
+      }
+    }
   }
 
   fn on_init_error(error: &dyn std::error::Error) -> String {
@@ -85,6 +108,7 @@ fn initialise() -> Result<DemoGameLoop, error::DemoError> {
     input_service: Box::new(input_service),
     logger,
     text_node,
+    state: State::Running,
   })
 }
 
@@ -93,11 +117,30 @@ mod util {
   use mythos_web::base::element::{CreateElement, ElementFactory};
   use wasm_bindgen::JsCast;
   use web_sys::{Document, HtmlElement, window, Window};
+
+  use super::State;
   use super::error::DemoError;
 
   pub fn create_element<T: JsCast>(name: &str) -> Result<T, DemoError> {
     let create_element = get_document().map(CreateElement::new)?;
     create_element.factory::<T>(name).build().map_err(|e| e.into())
+  }
+
+  pub fn game_over_styles(t: f64, tick: bool) -> Result<State, DemoError> {
+    let body = get_body()?;
+    if tick {
+      ElementFactory::new_from_element(body)
+        .set_style_with_str("background-color", "red")
+        .set_style_with_str("color", "white")
+        .build()?;
+      return Ok(State::Ended(t, false));
+    } else {
+      ElementFactory::new_from_element(body)
+        .set_style_with_str("background-color", "white")
+        .set_style_with_str("color", "red")
+        .build()?;
+      return Ok(State::Ended(t, true));
+    }
   }
 
   pub fn style_page() -> Result<(), DemoError> {
@@ -110,9 +153,12 @@ mod util {
     ElementFactory::new_from_element(body)
       .set_style("margin", Unit::px_u(0))
       .set_style("height", Unit::percent_u(100))
+      .set_style("font-size", Unit::px_u(24))
       .set_style_with_str("display", "flex")
       .set_style_with_str("align-items", "center")
       .set_style_with_str("justify-content", "center")
+      //.set_style("letter-spacing", Unit::em_f(0.5))
+      .set_style_with_str("line-height", "0.5")
       .build()?;
     Ok(())
   }

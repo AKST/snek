@@ -12,6 +12,7 @@ console_error_panic_hook = { version = "0.1.5", optional = true }
 js-sys = "0.3.35"
 mythos_core = { path = "../deps/mythos-rs/mythos-core" }
 mythos_web = { path = "../deps/mythos-rs/mythos-web" }
+rand = { version = "0.7.3", features = ["wasm-bindgen"] }
 wasm-bindgen = "0.2.58"
 wasm-bindgen-futures = "0.4.8"
 
